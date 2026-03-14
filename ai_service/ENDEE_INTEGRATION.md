@@ -3,21 +3,27 @@
 ## Mandatory repository steps (completed)
 - Starred official repo: `https://github.com/endee-io/endee`
 - Fork created: `https://github.com/text-ashish/endee`
-- Fork checkout added locally at: `/Users/ashish/Nervesparks/endee`
-- Upstream remote set to official Endee repo.
+- Fork checkout is used as the Endee working base
+- Upstream remote set to official Endee repo
 
 ## 1. Start Endee server
 From the forked Endee checkout:
 
 ```bash
-cd /Users/ashish/Nervesparks/endee
 docker compose up -d
 ```
 
 Endee API should be available at `http://localhost:8080`.
 
+If `endee-oss:latest` is missing, build once and rerun:
+
+```bash
+docker build -f infra/Dockerfile --build-arg BUILD_ARCH=neon -t endee-oss:latest .
+docker compose up -d
+```
+
 ## 2. Configure ai_service
-Add these values to `/Users/ashish/Nervesparks/ai_service/.env`:
+Add these values to `ai_service/.env`:
 
 ```bash
 VECTOR_DB_BACKEND=endee
@@ -33,7 +39,7 @@ ENDEE_REBUILD_INDEX=true
 ## 3. Install dependencies
 
 ```bash
-cd /Users/ashish/Nervesparks/ai_service
+cd ai_service
 pip install -r requirements.txt
 ```
 
@@ -43,4 +49,4 @@ pip install -r requirements.txt
 python app.py
 ```
 
-On startup, `build_vectorstore()` will create/recreate the Endee index and insert your recipe embeddings.
+On startup, `build_vectorstore()` creates/recreates the Endee index and inserts recipe embeddings.

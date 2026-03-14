@@ -32,3 +32,6 @@ build/
 
 # Local Endee fork checkout (separate git repo)
 endee/
+
+# Generated file list
+ai_service/py_files.txt
