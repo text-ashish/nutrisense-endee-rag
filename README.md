@@ -78,8 +78,10 @@ ENDEE_AUTH_TOKEN=
 - Python 3.10+
 - Node.js 18+
 - Git
-- Endee server (local or remote)
+- Forked Endee checkout at `/Users/ashish/Nervesparks/endee` with `./build/ndd-neon-darwin` available
 - Gemini API key
+
+
 
 ### 2. Clone this repository
 ```bash
@@ -88,24 +90,20 @@ cd Nervesparks
 ```
 
 ### 3. Start Endee
-Use your forked Endee checkout (`/Users/ashish/Nervesparks/endee`):
+Run Endee from your forked Endee checkout (`/Users/ashish/Nervesparks/endee`):
 
-Option A: Docker (if Docker installed)
-```bash
-cd /Users/ashish/Nervesparks/endee
-docker compose up -d
-```
-
-Option B: Native binary (no Docker)
 ```bash
 cd /Users/ashish/Nervesparks/endee
 NDD_DATA_DIR=/Users/ashish/Nervesparks/endee/data ./build/ndd-neon-darwin
 ```
 
-Option C: Remote Endee
-- set `ENDEE_URL` to your remote endpoint instead of localhost
+What this command does:
+- starts Endee server on `http://localhost:8080`
+- stores vector indexes/data in `/Users/ashish/Nervesparks/endee/data`
+- runs in foreground (keep terminal open; `Ctrl+C` stops it)
 
 ### 4. Configure and run AI service
+
 ```bash
 cd /Users/ashish/Nervesparks/ai_service
 python3 -m venv .venv
