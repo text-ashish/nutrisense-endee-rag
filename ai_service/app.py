@@ -13,7 +13,8 @@ load_dotenv()
 
 # --- Imports from your src folder ---
 from src.embeddings import get_embeddings
-from src.vectorstore import retrieve, generate_response, build_vectorstore
+from src.vectorstore import retrieve, build_vectorstore
+from src.rag import generate_response
 
 # --- Global State ---
 ml_context = {}

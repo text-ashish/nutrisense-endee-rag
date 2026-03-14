@@ -1,6 +1,8 @@
 # src/rag.py
 import os
+
 import google.generativeai as genai
+from google.api_core.exceptions import GoogleAPICallError, ResourceExhausted
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
@@ -8,9 +10,10 @@ if not GEMINI_API_KEY:
 
 genai.configure(api_key=GEMINI_API_KEY)
 
-# choose available model from your list
-_MODEL_NAME = "gemini-2.5-pro"
+# Default to flash model; override with GEMINI_MODEL in .env if needed.
+_MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 model = genai.GenerativeModel(_MODEL_NAME)
+
 
 def _build_prompt(user_query, retrieved_metadatas, user_profile):
     """
@@ -49,21 +52,41 @@ def _build_prompt(user_query, retrieved_metadatas, user_profile):
     prompt = intro + profile + context + instructions + f"User query: {user_query}\n"
     return prompt
 
-def generate_response(user_query, retrieved_metadatas, dietary_preference=None, exclude_allergens=None, health_condition=None, calorie_goal=0, protein_goal=0, fat_goal=0):
+
+def generate_response(
+    user_query,
+    retrieved_metadatas,
+    dietary_preference=None,
+    exclude_allergens=None,
+    health_condition=None,
+    calorie_goal=0,
+    protein_goal=0,
+    fat_goal=0,
+):
     user_profile = {
         "dietary_preference": dietary_preference,
         "exclude_allergens": exclude_allergens,
         "health_condition": health_condition,
         "calorie_goal": calorie_goal,
         "protein_goal": protein_goal,
-        "fat_goal": fat_goal
+        "fat_goal": fat_goal,
     }
+
+    if not retrieved_metadatas:
+        return "No suitable recipes were found for your filters. Try a broader query or relax constraints."
+
     prompt = _build_prompt(user_query, retrieved_metadatas, user_profile)
 
-    # call Gemini
-    # NOTE: depending on your installed SDK version, generate_content signature may vary.
-    # This style has worked for your environment: model.generate_content(prompt)
-    response = model.generate_content(prompt)
-
-    text = response.text if hasattr(response, 'text') else (getattr(response, 'content', None) or str(response))
-    return text
+    try:
+        response = model.generate_content(prompt)
+        text = response.text if hasattr(response, "text") else (getattr(response, "content", None) or str(response))
+        return text or "I could not generate a recommendation right now."
+    except ResourceExhausted:
+        return (
+            "Recipe retrieval succeeded, but Gemini quota/rate limit was exceeded. "
+            "Please try again shortly or switch to a model with available quota via GEMINI_MODEL."
+        )
+    except GoogleAPICallError:
+        return "Recipe retrieval succeeded, but the LLM call failed temporarily. Please try again."
+    except Exception:
+        return "Recipe retrieval succeeded, but response generation failed. Please try again."

@@ -1,219 +1,169 @@
-# 🍽️ NutriSense - AI-Powered Personalized Recipe & Nutrition RAG System
+# NutriSense RAG with Endee Vector Database
 
-[![Python](https://img.shields.io/badge/python-v3.8+-blue.svg)](https://www.python.org/downloads/)
-[![Gradio](https://img.shields.io/badge/gradio-v3.0+-orange.svg)](https://gradio.app/)
-[![ChromaDB](https://img.shields.io/badge/chromadb-vectorstore-green.svg)](https://www.trychroma.com/)
-[![Gemini AI](https://img.shields.io/badge/gemini-2.5--flash-purple.svg)](https://ai.google.dev/)
+NutriSense is a full-stack AI/ML recipe recommendation system that uses Retrieval-Augmented Generation (RAG) for personalized meal guidance.
 
-**NutriSense** is an advanced Retrieval-Augmented Generation (RAG) system that provides personalized recipe recommendations based on individual dietary preferences, health conditions, allergen restrictions, and nutritional goals. The system combines semantic search with AI-powered adaptation to deliver customized meal suggestions.
+## Project Overview
+The project helps users get recipe recommendations and adaptations based on:
+- recipe intent (for example: "Butter Chicken")
+- dietary preferences
+- health focus
+- allergen exclusions
+- nutrition targets (calories, protein, fat)
 
-## 🌟 Key Features
+## Problem Statement
+Traditional recipe search is keyword-only and does not adapt to user health constraints. This project solves that by combining:
+- semantic retrieval from a vector database (Endee)
+- metadata filtering (diet/allergens/health)
+- LLM-based adaptation and explanation (Gemini)
 
-###  Personalized Recommendations
-- **Dietary Preferences**: Vegetarian, Vegan, Gluten-Free options
-- **Health-Focused**: Diabetes, Hypertension, Heart-Friendly, Weight Loss, PCOS/PCOD, and more
-- **Allergen Management**: Automatic exclusion of nuts, dairy, eggs, and other allergens
-- **Nutritional Goals**: Customizable calorie, protein, and fat targets
+## Mandatory Endee Repository Compliance (Completed)
+To satisfy evaluation requirements, these mandatory steps were completed before integration:
+- Starred official Endee repo: [https://github.com/endee-io/endee](https://github.com/endee-io/endee)
+- Forked Endee repo: [https://github.com/text-ashish/endee](https://github.com/text-ashish/endee)
+- Used fork as the working Endee base locally: `/Users/ashish/Nervesparks/endee`
+- Added upstream remote to official repo for sync workflow
 
-###  Intelligent Search & Retrieval
-- **Semantic Search**: Vector-based recipe matching using embeddings
-- **Multi-Filter System**: Complex filtering based on dietary, health, and allergen constraints
-- **Smart Substitutions**: AI-powered ingredient replacements for allergens and health conditions
-
-###  AI-Powered Adaptation
-- **Recipe Modification**: Real-time adaptation for health conditions
-- **Nutritional Optimization**: Automatic adjustment to meet user goals
-- **Contextual Explanations**: Clear reasoning for recipe selections and modifications
-
-##  System Architecture
-
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Data Input    │    │   Preprocessing  │    │   Embeddings    │
-│   (CSV Recipes) │───▶│   & Chunking     │───▶│   Generation    │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-                                                          │
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│  Gradio Web UI  │    │   Query Engine   │    │   ChromaDB      │
-│   Interface     │◄───│   & Filtering    │◄───│  Vector Store   │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-         │                        │
-         ▼                        ▼
-┌─────────────────┐    ┌──────────────────┐
-│   Gemini AI     │    │   Response       │
-│   RAG Engine    │───▶│   Generation     │
-└─────────────────┘    └──────────────────┘
+## System Design
+```mermaid
+flowchart LR
+  UI[React Frontend :5173] --> API[Node Proxy Backend :5001]
+  API --> AI[FastAPI AI Service :8001]
+  AI --> EMB[Embedding Model
+all-MiniLM-L6-v2]
+  AI --> ENDEE[Endee Vector DB :8080]
+  AI --> LLM[Gemini LLM]
+  ENDEE --> AI
+  LLM --> AI
+  AI --> API --> UI
 ```
 
-##  Technical Requirements
+## Technical Approach
+1. Recipe dataset is preprocessed into rich text chunks and normalized nutrition metadata.
+2. Chunks are embedded using `sentence-transformers`.
+3. Embeddings and metadata are indexed into Endee.
+4. On query:
+- embed user query
+- search nearest vectors in Endee
+- apply metadata filters locally (diet, allergens, health)
+- pass retrieved context to Gemini for final personalized response
 
-### Dependencies
-```python
-gradio>=3.0.0
-chromadb>=0.4.0
-pandas>=1.5.0
-numpy>=1.21.0
-google-generativeai>=0.3.0
-sentence-transformers>=2.2.0
-python-dotenv>=1.0.0
-```
+## How Endee Is Used
+The AI service supports `VECTOR_DB_BACKEND=endee` and uses Endee HTTP APIs:
+- index management: create/list/delete
+- vector insert: batch insert of embedding + metadata payload
+- search: top-k nearest vectors via `/api/v1/index/{index}/search`
 
-### Environment Setup
-Create a `.env` file with your API keys:
+Key env vars:
 ```bash
-GEMINI_API_KEY=your_gemini_api_key_here
+VECTOR_DB_BACKEND=endee
+ENDEE_URL=http://localhost:8080
+ENDEE_INDEX_NAME=recipes
+ENDEE_SPACE_TYPE=cosine
+ENDEE_PRECISION=int16
+ENDEE_REBUILD_INDEX=true
+# optional if auth enabled
+ENDEE_AUTH_TOKEN=
 ```
 
-##  Quick Start
+## Repository Structure
+- `frontend/` React UI (Vite)
+- `backend/` Node.js API proxy
+- `ai_service/` FastAPI RAG service (Endee + Gemini integration)
+- `ai_service/data/` recipes and precomputed artifacts
+- `ai_service/src/` preprocessing, embeddings, vectorstore, RAG logic
 
-### 1. Clone the Repository
+## Setup and Execution
+
+### 1. Prerequisites
+- Python 3.10+
+- Node.js 18+
+- Git
+- Endee server (local or remote)
+- Gemini API key
+
+### 2. Clone this repository
 ```bash
-git clone https://github.com/yourusername/nutrisense-rag
-cd nutrisense-rag
+git clone https://github.com/text-ashish/nervesparks-endee-rag.git
+cd Nervesparks
 ```
 
-### 2. Install Dependencies
+### 3. Start Endee
+Use your forked Endee checkout (`/Users/ashish/Nervesparks/endee`):
+
+Option A: Docker (if Docker installed)
 ```bash
+cd /Users/ashish/Nervesparks/endee
+docker compose up -d
+```
+
+Option B: Native binary (no Docker)
+```bash
+cd /Users/ashish/Nervesparks/endee
+NDD_DATA_DIR=/Users/ashish/Nervesparks/endee/data ./build/ndd-neon-darwin
+```
+
+Option C: Remote Endee
+- set `ENDEE_URL` to your remote endpoint instead of localhost
+
+### 4. Configure and run AI service
+```bash
+cd /Users/ashish/Nervesparks/ai_service
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Set up Environment Variables
+Create `/Users/ashish/Nervesparks/ai_service/.env`:
 ```bash
-cp .env.example .env
-# Edit .env with your Gemini API key
+GEMINI_API_KEY=your_key
+GEMINI_MODEL=gemini-2.5-flash
+VECTOR_DB_BACKEND=endee
+ENDEE_URL=http://localhost:8080
+ENDEE_INDEX_NAME=recipes
+ENDEE_SPACE_TYPE=cosine
+ENDEE_PRECISION=int16
+ENDEE_REBUILD_INDEX=true
 ```
 
-### 4. Prepare Your Data
-DataSet used `data/recipes.csv` are having following columns:
-- `recipe_name`: Name of the recipe
-- `ingredients`: List of ingredients
-- `directions`: Cooking instructions
-- `nutrition_normalized`: Nutritional information (JSON)
-- `dietary_labels`: Dietary classifications
-- `allergens`: Known allergens
-- `health_tags`: Health-related tags
-
-### 5. Launch the Application
+Run AI service:
 ```bash
-python app.py
+cd /Users/ashish/Nervesparks/ai_service
+./.venv/bin/python app.py
 ```
 
-The application will be available at `http://localhost:7860`
-Live Url: `https://huggingface.co/spaces/text-ashish/NutriSense`
-
-## 🗂️ Project Structure
-
-```
-nutrisense-rag/
-│
-├── src/
-│   ├── preprocess.py      # Data preprocessing and chunking
-│   ├── embeddings.py      # Embedding generation utilities
-│   ├── vectorstore.py     # ChromaDB vector store operations
-│   └── rag.py            # RAG pipeline and Gemini integration
-│
-├── data/
-│   └── recipes.csv       # Recipe dataset
-│
-├── .chromadb/            # Persistent vector database
-│
-├── app.py               # Main Gradio application
-├── requirements.txt     # Python dependencies
-├── .env.example        # Environment variables template
-└── README.md           # This file
+### 5. Run Node backend
+```bash
+cd /Users/ashish/Nervesparks/backend
+npm install
+npm start
 ```
 
-##  Core Components
+### 6. Run frontend
+```bash
+cd /Users/ashish/Nervesparks/frontend
+npm install
+npm run dev
+```
 
-### 1. Data Preprocessing (`src/preprocess.py`)
-- **Chunking Strategy**: Optimized text chunks for recipe data
-- **Normalization**: Standardized nutritional data formatting
-- **Health Tagging**: Automatic health condition classification
+Open UI at `http://localhost:5173`.
 
-### 2. Embedding Generation (`src/embeddings.py`)
-- **Model**: Sentence Transformers for semantic embeddings
-- **Optimization**: Batch processing for efficient embedding generation
-- **Caching**: Persistent storage of computed embeddings
+## Verification
+Health checks:
+```bash
+curl http://localhost:8080/api/v1/health
+curl http://localhost:8001/
+```
 
-### 3. Vector Store (`src/vectorstore.py`)
-- **Database**: ChromaDB for persistent vector storage
-- **Filtering**: Multi-criteria filtering for dietary and health constraints
-- **Retrieval**: Similarity-based recipe matching
+Sample recommendation call:
+```bash
+curl -X POST http://localhost:8001/get_recipe \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"Butter Chicken","dietary":"None","health":"Heart-Friendly","allergens":"","calories":0,"protein":0,"fat":0}'
+```
 
-### 4. RAG Pipeline (`src/rag.py`)
-- **LLM Integration**: Google Gemini 2.5 Flash model
-- **Prompt Engineering**: Structured prompts for consistent outputs
-- **Response Formatting**: Organized recipe adaptations and explanations
+## Notes
+- If dataset has empty `health_tags`, strict health filtering can over-prune results. Current implementation avoids hard blocking when tags are empty.
+- Set `ENDEE_REBUILD_INDEX=false` after first successful indexing if you want faster restarts without reindex.
 
-##  Key Technical Challenges Solved
-
-### 1. Nutritional Data Standardization
-- **Challenge**: Inconsistent nutritional information across recipes
-- **Solution**: Automated normalization pipeline with unit conversion
-- **Implementation**: JSON-based structured nutrition data
-
-### 2. Complex Dietary Filtering
-- **Challenge**: Multiple overlapping dietary restrictions
-- **Solution**: Multi-stage filtering system with priority rules
-- **Implementation**: Hierarchical constraint satisfaction
-
-### 3. Health Condition Mapping
-- **Challenge**: Matching health conditions to recipe modifications
-- **Solution**: Rule-based modification system with AI adaptation
-- **Implementation**: Condition-specific nutrient optimization
-
-### 4. Ingredient Substitution Logic
-- **Challenge**: Context-aware allergen replacements
-- **Solution**: Knowledge-based substitution engine
-- **Implementation**: Categorical replacement with nutritional equivalence
-
-##  Use Cases
-
-### For Health-Conscious Users
-- **Diabetes Management**: Low-sugar, high-fiber recipe modifications
-- **Heart Health**: Reduced sodium and saturated fat alternatives
-- **Weight Management**: Calorie-controlled portions with protein optimization
-
-### For Dietary Restrictions
-- **Allergen-Free Cooking**: Safe alternatives for common allergens
-- **Plant-Based Nutrition**: Complete protein combinations for vegans
-- **Gluten-Free Options**: Texture-preserving flour substitutions
-
-### For Nutritional Goals
-- **Athletic Performance**: High-protein, recovery-focused meals
-- **Child Nutrition**: Balanced macronutrients for growing children
-- **Senior Care**: Easy-to-digest, nutrient-dense options
-
-##  Performance Metrics
-
-### Retrieval Accuracy
-- **Semantic Match**: 92% relevance score for recipe queries
-- **Constraint Satisfaction**: 96% success rate in filtering
-- **Response Time**: Average 7.3 seconds per query
-
-### User Satisfaction
-- **Dietary Compliance**: 94% adherence to specified restrictions
-- **Nutritional Accuracy**: ±5% variance from target goals
-- **Recipe Adaptability**: 89% successful modifications
-
-
-##  Acknowledgments
-
-- **Google Gemini AI** for powerful language generation capabilities
-- **ChromaDB** for efficient vector storage and retrieval
-- **Gradio** for the intuitive web interface framework
-- **Sentence Transformers** for high-quality embeddings
-- **HuggingFace** for the open-source ML ecosystem
-
-##  Author
-
-- 📧 Email: text.ashishkumar@gmail.com
--  Linkedin: [Ashish Srivastava](http://linkedin.com/in/text-ashish/)
-
----
-
-**Made with ❤️ for healthy living and intelligent nutrition**
-
-*NutriSense - Where AI meets personalized nutrition*
-
-
+## License
+This project uses the license of this repository. Endee usage follows the upstream Endee license.
